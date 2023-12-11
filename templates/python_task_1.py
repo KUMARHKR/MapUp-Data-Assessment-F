@@ -1,4 +1,7 @@
+from datetime import timedelta
+
 import pandas as pd
+import numpy as np
 
 
 def generate_car_matrix(df)->pd.DataFrame:
@@ -13,8 +16,16 @@ def generate_car_matrix(df)->pd.DataFrame:
                           where 'id_1' and 'id_2' are used as indices and columns respectively.
     """
     # Write your logic here
+    car_matrix = df.pivot_table(
+        values="car", index="id_1", columns="id_2", fill_value=0
+    )
 
-    return df
+    # Set diagonal values to 0
+    np.fill_diagonal(car_matrix.values, 0)
+
+    return car_matrix
+
+
 
 
 def get_type_count(df)->dict:
@@ -28,8 +39,13 @@ def get_type_count(df)->dict:
         dict: A dictionary with car types as keys and their counts as values.
     """
     # Write your logic here
+    car_types = {
+        "low": df.query("car <= 15")["car"].count(),
+        "medium": df.query("15 < car <= 25")["car"].count(),
+        "high": df.query("car > 25")["car"].count(),
+    }
 
-    return dict()
+    return car_types
 
 
 def get_bus_indexes(df)->list:
@@ -43,8 +59,10 @@ def get_bus_indexes(df)->list:
         list: List of indexes where 'bus' values exceed twice the mean.
     """
     # Write your logic here
+    mean_bus_value = df["bus"].mean()
+    exceeding_indexes = df.query("bus > 2 * @mean_bus_value").index.tolist()
 
-    return list()
+    return sorted(exceeding_indexes)
 
 
 def filter_routes(df)->list:
@@ -58,8 +76,10 @@ def filter_routes(df)->list:
         list: List of route names with average 'truck' values greater than 7.
     """
     # Write your logic here
+    avg_truck_by_route = df.groupby("route")["truck"].mean()
+    filtered_routes = avg_truck_by_route[avg_truck_by_route > 7].index.tolist()
 
-    return list()
+    return sorted(filtered_routes)
 
 
 def multiply_matrix(matrix)->pd.DataFrame:
@@ -73,9 +93,15 @@ def multiply_matrix(matrix)->pd.DataFrame:
         pandas.DataFrame: Modified matrix with values multiplied based on custom conditions.
     """
     # Write your logic here
+    def multiplier(value):
+        if value > 20:
+            return value * 0.75
+        elif value <= 20:
+            return value * 1.25
+        else:
+            return value
 
-    return matrix
-
+    return matrix.applymap(lambda value: multiplier(value)).round(1)
 
 def time_check(df)->pd.Series:
     """
@@ -88,5 +114,12 @@ def time_check(df)->pd.Series:
         pd.Series: return a boolean series
     """
     # Write your logic here
+    def is_valid_time_range(row):
 
-    return pd.Series()
+        start_time = pd.to_datetime(row["startDay"] + " " + row["startTime"])
+        end_time = pd.to_datetime(row["endDay"] + " " + row["endTime"])
+
+        return (
+                (end_time - start_time) >= timedelta(days=1)
+                and start_time.time() <= end_time.time() <= start_time.time() + timedelta(hours=23, minutes=59, seconds=59)
+        )
